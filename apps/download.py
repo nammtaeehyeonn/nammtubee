@@ -21,5 +21,5 @@ lower_path = f"./contents/{upper_dir}/{lower_dir}"
 os.makedirs(upper_path, exist_ok=True) # 날짜
 os.makedirs(lower_path, exist_ok=True) # 시간
 
-ys_v.download(output_path=lower_path, filename="my_video.mp4")
+ys_v.download(output_path=lower_path, filename="video.mp4")
 ys_a.download(output_path=lower_path, filename="audio.mp3")  # 오디오 파일로 저장
