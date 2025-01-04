@@ -61,61 +61,144 @@ class nammtubee():
     
     def capture(self):
         print("-- starting Capture") 
-        video = cv2.VideoCapture(self.video_path)
-
-        fps = video.get(cv2.CAP_PROP_FPS)  # 프레임 속도
-        total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))  # 총 프레임 수
-        frame_interval = int(fps * 2)  # 10초 간격 (10초 * FPS)
-        frame_count, capture_count = 0, 0
-        
-        # 진행률 체크를 위한 마일스톤 설정
-        milestones = [0.25, 0.5, 0.75, 1.0]  # 25%, 50%, 75%, 100%
-        milestone_index = 0
-        
         self.image_path = os.path.join(self.lower_path, "images")
-        os.makedirs(self.image_path, exist_ok=True) # 시간
-        
-        while True:
-            ret, frame = video.read()
-            if not ret:
-                print(f"Progress: {int(milestones[milestone_index] * 100)}%")
-                break
-            
-            # 10초 간격 프레임인지 확인
-            if (frame_count % frame_interval == 0) and (frame_count > 0):
-                current_time_sec = frame_count / fps
-                minutes, seconds = divmod(int(current_time_sec+1), 60)
-                time_str = f"{minutes:02d}{seconds:02d}"  # 분초 형식으로 포맷팅
-                
-                progress = frame_count / total_frames # 현재 프레임의 진행률 계산
-                if milestone_index < len(milestones) and progress >= milestones[milestone_index]:
-                    print(f"Progress: {int(milestones[milestone_index] * 100)}%")
-                    milestone_index += 1
-                    
-                output_path = os.path.join(self.image_path, f"capture_{capture_count:03d}_{time_str}.jpg") # capture_057_0154.jpg : 57번째 사진이며 01분54초 화면
-                cv2.imwrite(output_path, frame)  # 이미지 저장
-                capture_count += 1
+        if os.path.exists(self.image_path):
+           pass
+       
+        else:
+            os.makedirs(self.image_path)
+            video = cv2.VideoCapture(self.video_path)
 
-            frame_count += 1
-        video.release()
-        
+            fps = video.get(cv2.CAP_PROP_FPS)  # 프레임 속도
+            total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))  # 총 프레임 수
+            frame_interval = int(fps * 2)  # 10초 간격 (10초 * FPS)
+            frame_count, capture_count = 0, 0
+            
+            # 진행률 체크를 위한 마일스톤 설정
+            milestones = [0.25, 0.5, 0.75, 1.0]  # 25%, 50%, 75%, 100%
+            milestone_index = 0
+            
+            
+            while True:
+                ret, frame = video.read()
+                if not ret:
+                    print(f"Progress: {int(milestones[milestone_index] * 100)}%")
+                    break
+                
+                # 10초 간격 프레임인지 확인
+                if (frame_count % frame_interval == 0):
+                    current_time_sec = frame_count / fps
+                    minutes, seconds = divmod(int(current_time_sec), 60)
+                    time_str = f"{minutes:02d}{seconds+1:02d}"  # 분초 형식으로 포맷팅
+                    
+                    progress = frame_count / total_frames # 현재 프레임의 진행률 계산
+                    if milestone_index < len(milestones) and progress >= milestones[milestone_index]:
+                        print(f"Progress: {int(milestones[milestone_index] * 100)}%")
+                        milestone_index += 1
+                        
+                    output_path = os.path.join(self.image_path, f"capture_{capture_count:03d}_{time_str}.jpg") # capture_057_0154.jpg : 57번째 사진이며 01분54초 화면
+                    cv2.imwrite(output_path, frame)  # 이미지 저장
+                    capture_count += 1
+
+                frame_count += 1
+            video.release()
+            
         print("-- finished Capture")    
         print(f"    * image_path: {self.image_path}")
         print("="*50)
         return self.image_path
+    
+    def contour(self):
+        print("-- starting Contour") 
+        self.contour_path = os.path.join(self.lower_path, "contours")
+        os.makedirs(self.contour_path, exist_ok=True)
+        # if os.path.exists(self.contour_path):
+        #    pass
         
+        # else:
+            # os.makedirs(self.contour_path)
+        image_files = [f for f in os.listdir(self.image_path) if f.endswith(('.png', '.jpg', '.jpeg'))]
         
+        for image_file in image_files:
+            # 이미지 읽기
+            input_image_path = os.path.join(self.image_path, image_file)
+            image = cv2.imread(input_image_path)
+            
+            if image is None:
+                print(f"Failed to load {input_image_path}")
+                continue
+            
+            # 이미지 그레이스케일 변환
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # 이진화
+            _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+            # 윤곽선 찾기
+            contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            # 윤곽선 그리기
+            outlined_image = image.copy()
+            cv2.drawContours(outlined_image, contours, -1, (0, 255, 0), 2)  # 초록색, 두께 2
+
+            # 결과 저장
+            output_image_path = os.path.join(self.contour_path, image_file.replace("capture", "contour"))
+            cv2.imwrite(output_image_path, outlined_image)
+            print(f"Saved outlined image: {output_image_path}")
+            
+        print("-- finished Contour")    
+        print(f"    * contour_path: {self.contour_path}")
+        print("="*50)
+        return 
+    
+    def contour_video(self):
+        video = cv2.VideoCapture(self.video_path)
+        self.output_path= "./contents/output.mp4"
+        # 원본 동영상 정보 가져오기
+        width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = video.get(cv2.CAP_PROP_FPS)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # MP4 코덱
+        # 출력 동영상 설정
+        output_video = cv2.VideoWriter(self.output_path, fourcc, fps, (width, height))
+        while True:
+            ret, frame = video.read()
+            if not ret:
+                break
+
+            # 그레이스케일로 변환
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # 이진화
+            _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+            # 윤곽선 찾기
+            contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            # 윤곽선 그리기
+            contour_frame = frame.copy()
+            cv2.drawContours(contour_frame, contours, -1, (0, 255, 0), 2)  # 초록색, 두께 2
+
+            # 프레임 저장
+            output_video.write(contour_frame)
+        # 자원 해제
+        video.release()
+        output_video.release()
+        print(f"윤곽선이 그려진 동영상이 저장되었습니다: {self.output_path}")
+        return 
         
 ####################################################################################################
 ####################################################################################################
 
 
 if __name__ == "__main__":
-    # nt = nammtubee(url="https://www.youtube.com/watch?v=gvXsmI3Gdq8", 
+    # nt = nammtubee(url="https://www.youtube.com/watch?v=AYfwQISVGQk", 
     #                upper_dir="", 
     #                lower_dir="")
     nt = nammtubee(url="", 
                    upper_dir="250104", 
-                   lower_dir="160710")
+                   lower_dir="165717")
     video_path, audio_path = nt.download()
     image_path = nt.capture()
+    # contour_path = nt.contour()
+    nt.contour_video()
